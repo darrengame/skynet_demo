@@ -157,3 +157,5 @@ function M.do_save_loop()
         dirty_list[key] = nil
     end
 end
+
+return M
