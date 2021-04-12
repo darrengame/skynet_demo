@@ -1,17 +1,15 @@
 local skynet = require "skynet"
 local md5 = require "md5"
 local log = require "log"
-
-local AGENT
-local GATE
-local TIMEOUT_AUTH = 10 -- 认证超时 10s
+local timer = require "timer"
 
 local M = {}    -- 模块接口
 local RPC = {}  -- 协议绑定处理函数
 
+local AGENT
+local GATE
+local TIMEOUT_AUTH = 10 -- 认证超时 10s
 local noauth_fds = {}   -- 未通过认证的客户端
-local online_users = {} -- 在线玩家列表
-local fd2uid = {}       -- uid 列表
 
 -- 标记哪些协议不需要登录就能访问
 local no_auth_proto_list = {
@@ -80,34 +78,9 @@ function M.handle_proto(req, fd)
     return res
 end
 
--- 登录成功逻辑
-function M.login(acc, fd)
-    assert(not fd2uid(fd), string.format("Already Logined. acc:%s, fd:%s", acc, fd))
-
-    -- TODO:从数据库加载数据
-    local uid = tonumber(acc) -- 临时设置
-    local user = {
-        fd = fd,
-        acc = acc,
-    }
-    online_users[uid] = user
-    fd2uid[fd] = uid
-
-    -- 通知 gate 以后消息由 agent 接管
-    skynet.call(GATE, "lua", "forward", fd)
-
-    log.info("Login Success. acc:", acc, ", fd:", fd)
-    local res = {
-        pid = "s2c_login",
-        uid = uid,
-        msg = "Login Success"
-    }
-    return res
-end
-
 function M.open_fd(fd)
     noauth_fds[fd] = skynet.time()
-    skynet.timeout(TIMEOUT_AUTH+1, timeout_auth, fd)
+    timer.timeout(TIMEOUT_AUTH+1, timeout_auth, fd)
 end
 
 function M.close_fd(fd)

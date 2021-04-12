@@ -12,14 +12,14 @@ local CMD = {}
 local cache_list -- 缓存列表（lru对象）
 local dirty_list -- 脏数据列表
 local load_queue -- 数据加载队列
-local dat_tbl   -- mongoDB 操作对象
+local dat_tbl    -- mongoDB 操作对象
 local init_cb_list = {} -- 数据加载后的初始化回调函数列表
 
 local function init_db()
     local cfg = config.get_db_conf()
     local dbs = mongo.client(cfg)
 
-    local db_name = cfg.authdb
+    local db_name = "data_cache_db"
     log.info("connect to db:", db_name)
     local db = dbs[db_name]
 
@@ -31,10 +31,19 @@ local function get_key(mod, id)
     return string.format("%s_%s", mod, id)
 end
 
+-- 加载完数据后执行 mod 对应的所有初始化函数
+local function run_init_cb(mod, id, dat_data)
+    for sub_mod, cb in pairs(init_cb_list[mod] or {}) do
+        cb(id, dat_data)
+    end
+end
+
 local function load_db(key, mod, id)
     local ret = dat_tbl:findOne({_key = key})
     if not ret then
-        local dat_tbl = {_key = key}
+        local dat_data = {
+            _key = key,
+        }
         local ok, msg, ret = dat_tbl:safe_insert(dat_data)
         if ok and ret and ret.n == 1 then
             log.info("new dat succ. key:", key, ret._key)
@@ -49,13 +58,6 @@ local function load_db(key, mod, id)
         end
         run_init_cb(mod, id, ret)
         return ret._key, ret
-    end
-end
-
--- 加载完数据后执行 mod 对应的所有初始化函数
-local function run_init_cb(mod, id, dat_data)
-    for sub_mod, cb in pairs(init_cb_list[mod]) do
-        cb(id, dat_data)
     end
 end
 
@@ -120,8 +122,8 @@ function M.load_cache(mod, id)
     local _key, cache = load_queue(load_db, key, mod, id)
     assert(_key == key)
     cache_list:set(key, cache) -- 把 cache 存入 cache_list
-    cache._ref = 1 -- 初始引用计数
-    dirty_list[key] = true -- 标记此 cache 已脏
+    cache._ref = 1             -- 初始引用计数
+    dirty_list[key] = true     -- 标记此 cache 已脏
     return cache
 end
 
@@ -133,10 +135,10 @@ function M.regist_init_cb(mod, sub_mod, init_cb)
     init_cb_list[mod][sub_mod] = init_cb
 end
 
--- 翻译缓存
+-- 释放缓存
 function M.release_cache(mod, id, cache)
     local key = get_key(mod, id)
-    cache._ref = cache._ref - 1
+    cache._ref = cache._ref-1
     if cache._ref < 0 then
         log.error("cache ref wrong. key:", key, ", ref:", cache._ref)
     end

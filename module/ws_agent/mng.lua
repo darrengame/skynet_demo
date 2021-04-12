@@ -2,6 +2,7 @@ local skynet = require "skynet"
 local log = require "log"
 local json = require "json"
 local db_op = require "ws_agent.db_op"
+local db_cache = require "db_cache"
 
 local M = {} -- 模块接口
 local RPC = {} -- 协议绑定处理函数
