@@ -81,12 +81,12 @@ end
 
 function M.init()
     init_db()
-    local max_cache_cnt = tonumber(skynet.enve("max_cache_cnt"))
+    local max_cache_cnt = tonumber(skynet.getenv("max_cache_cnt"))
     cache_list = lru_cache.new(max_cache_cnt, cache_remove_cb)
     dirty_list = {}
     load_queue = queue()
-    local save_interval = tonumber(skynet.enve("save_interval"))
-    timer.timeout_repeat(save_interval, M.do_save_loop())
+    local save_interval = tonumber(skynet.getenv("save_interval"))
+    timer.timeout_repeat(save_interval, M.do_save_loop)
 end
 
 function M.get_func(mod, sub_mod, func_name)

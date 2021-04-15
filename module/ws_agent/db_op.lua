@@ -29,7 +29,7 @@ local function call_create_new_user(acc, init_data)
 end
 
 local function _call_load_user(acc)
-    local ret = account_tbl.findOne({acc = acc})
+    local ret = account_tbl:findOne({acc = acc})
     if not ret then
         return call_create_new_user(acc)
     else
@@ -57,7 +57,7 @@ function M.init_db()
     -- guid 模块初始化
     cfg.dbname = skynet.getenv("guid_db_name")
     cfg.tblname = skynet.getenv("guid_tbl_name")
-    cfg.idtypes = skynet.getenv("guid_idtypes")
+    cfg.idtypes = config.get_tbl("guid_idtypes")
     guid.init(cfg)
 end
 

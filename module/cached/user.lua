@@ -16,6 +16,7 @@ end
 
 function CMD.set_username(uid, cache, username)
     cache.username = username
+    return true
 end
 
 function M.init()
