@@ -3,6 +3,8 @@ local socket = require "skynet.socket"
 local websocket = require "http.websocket"
 local socketdriver = require "skynet.socketdriver"
 local log = require "log"
+local util_table = require "util.table"
+local batch = require "batch"
 require "skynet.manager"
 
 local WATCHDOG -- watchdog 服务的地址
@@ -31,6 +33,12 @@ local function close_fd(fd)
         unforward(c)
         connection[fd] = nil
         client_number = client_number-1
+    end
+end
+
+local function do_send_msg(fd, msg)
+    if connection[fd] then
+        websocket.write(fd, msg)
     end
 end
 
@@ -128,6 +136,17 @@ end
 
 function CMD.kick(source, fd)
     websocket.close(fd)
+end
+
+-- 广播消息的接口
+function CMD.broadcast(source, msg)
+    log.debug("ws broadcast:", msg)
+    local fds = util_table.keys(connection)
+    -- 调用批处理接口
+    local ok, err = batch.new_batch_task({"broadcast", source, msg}, 1, 100, fds, do_send_msg, msg)
+    if not ok then
+        log.error("broadcast error:", err)
+    end
 end
 
 skynet.register_protocol {

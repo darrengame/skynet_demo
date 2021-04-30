@@ -158,4 +158,9 @@ function M.do_save_loop()
     end
 end
 
+-- 推送消息给客户端
+function M.send_to_client(uid, res)
+    skynet.send(".ws_agent", "lua", "send_to_client", tonumber(uid), res)
+end
+
 return M

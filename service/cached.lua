@@ -3,6 +3,7 @@ require "skynet.manager"
 local log = require "log"
 local mng = require "cached.mng"
 local user = require "cached.user"
+local item = require "cached.item"
 
 local CMD = {}
 
@@ -26,4 +27,5 @@ skynet.start(function()
     end)
     mng.init()
     user.init()
+    item.init()
 end)

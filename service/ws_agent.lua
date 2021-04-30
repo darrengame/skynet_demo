@@ -22,6 +22,15 @@ function CMD.disconnect(fd)
     mng.disconnect(fd)
 end
 
+-- 推送消息给客户端
+function CMD.send_to_client(uid, res)
+    local fd = mng.get_fd(uid)
+    log.debug("send to client", fd, uid, res)
+    if fd then
+        mng.send_res(fd, res)
+    end
+end
+
 skynet.register_protocol {
     name = "client",
     id = skynet.PTYPE_CLIENT,

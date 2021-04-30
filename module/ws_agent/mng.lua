@@ -5,6 +5,7 @@ local db_op = require "ws_agent.db_op"
 local db_cache = require "db_cache"
 local gm = require "ws_agent.gm.main"
 local timer = require "timer"
+local search_mod = require "ws_agent.search"
 
 local M = {} -- 模块接口
 local RPC = {} -- 协议绑定处理函数
@@ -25,6 +26,9 @@ function M.init(gate, watchdog)
 
     -- 注册 gm 协议
     M.regist_rpc(gm.RPC)
+
+    -- 初始化 search 模块
+    search_mod.init()
 end
 
 -- 返回协议给客户端
@@ -52,10 +56,16 @@ function M.login(acc, fd)
     local timer_id = timer.timeout_repeat(user_alive_keep_time, M.check_user_online, uid)
     user.timer_id = timer_id
 
+    -- 获取玩家信息
+    local userinfo = db_cache.call_cached("get_userinfo", "user", "user", uid)
+
     log.info("Login Success. acc:", acc, ", fd:", fd)
     local res = {
         pid = "s2c_login",
         uid = uid,
+        username = userinfo.username,
+        lv = userinfo.lv,
+        exp = userinfo.exp,
         msg = "Login Success",
     }
     return res
@@ -107,13 +117,24 @@ function M.check_user_online(uid)
     if not user then
         return
     end
-    
+
     local now = skynet.time()
     if now - user.heartbeat >= user_alive_keep_time then
         -- 超时踢掉
         log.debug("user time out kick:", uid)
         M.close_fd(user.fd)
     end
+end
+
+-- 修改玩家名字
+function M.set_username(uid, username)
+    local ret = db_cache.call_cached("set_username", "user", "user", uid, username)
+    if ret then
+        -- 更新数据库里的名字用于搜索
+        db_op.update_username(uid, username)
+    end
+
+    return ret
 end
 
 -- 消息处理
@@ -148,16 +169,17 @@ end
  ]]
 
 function RPC.c2s_set_username(req, fd, uid)
-    local ret, err = db_cache.call_cached("set_username", "user", "user", uid, req.username)
-    if ret then
-        local res = {
-            pid = "s2c_set_username",
-            username = req.username
-        }
-        return res
-    else
-        return false, err
-    end
+    -- local ret, err = db_cache.call_cached("set_username", "user", "user", uid, req.username)
+    M.set_username(uid, req.username)
+    local res = {
+        pid = "s2c_set_username",
+        username = req.username
+    }
+    return res
+    -- if ret then
+    -- else
+    --     return false, err
+    -- end
 end
 
 function RPC.c2s_heartbeat(req, fd, uid)
