@@ -69,7 +69,7 @@ end
 -- 注册日志服务处理函数
 skynet.register_protocol {
     name = "text",
-    id = skynet.PTYEP_TEXT,
+    id = skynet.PTYPE_TEXT,
     unpack = skynet.tostring,
     dispatch = function(_, addr, str)
         local time = get_str_time()
@@ -81,7 +81,7 @@ skynet.register_protocol {
 -- 捕捉 signhup 信号（kill -1）执行安全关服逻辑
 skynet.register_protocol{
     name = "SYSTEM",
-    id = skynet.PTYEP_SYSTEM,
+    id = skynet.PTYPE_SYSTEM,
     upack = function(...) return ... end,
     dispatch = function()
         local cached = skynet.localname(".cached")
@@ -101,6 +101,7 @@ skynet.register_protocol{
 local CMD = {}
 
 skynet.start(function()
+    -- print("register log")
     skynet.register ".log"
     skynet.dispatch("lua", function(_, _, cmd, ...)
         local f = CMD[cmd]
@@ -111,6 +112,7 @@ skynet.start(function()
         end
     end)
     -- 开服时开启日志文件，达到备份上次日志的效果
+    skynet.error("log start")
     local ok, msg = pcall(reopen_log)
     if not ok then
         print(msg)
