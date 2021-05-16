@@ -80,6 +80,7 @@ end
 
 function M.open_fd(fd)
     noauth_fds[fd] = skynet.time()
+    -- log.debug("open fd auth:", TIMEOUT_AUTH+1, timeout_auth == nil)
     timer.timeout(TIMEOUT_AUTH+1, timeout_auth, fd)
 end
 

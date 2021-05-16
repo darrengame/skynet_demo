@@ -9,14 +9,14 @@ local xpcall = xpcall
 
 local M = {}
 
-local is_init = false
-local timer_inc_id = 1
-local cur_frame = 0
-local timer2frame = {}
-local frame2callouts = {}
-local timer_size = 0
-local frame_size = 0
-local last_mem = 0
+local is_init = false   -- 初始化标记
+local timer_inc_id = 1  -- 定时器自增ID
+local cur_frame = 0     -- 当前帧，一帧一秒
+local timer2frame = {}  -- 定时器 ID 对应帧 timerid:frame
+local frame2callouts = {} -- 帧对应的回调函数 frame: callouts {timer:{timerid:{cb, args, is_repeat, sec}, size:1}}
+local timer_size = 0    -- 定时器数量
+local frame_size = 0    -- 帧数量
+local last_mem = 0      -- 当前
 local step_men = 100
 
 local function del_timer(id)
@@ -42,13 +42,15 @@ local function del_timer(id)
 end
 
 local function init_callout(id, sec, f, args, is_repeat)
+    assert(f ~= nil, "add timer callback is nil")
+    -- 校正帧数
     local fixframe
-    local _frame = sec
-    if _frame == 0 then
-        _frame = 1
+    local frame = sec
+    if frame == 0 then
+        frame = 1
     end
 
-    fixframe = cur_frame + _frame
+    fixframe = cur_frame + frame
 
     local callouts = frame2callouts[fixframe]
     if not callouts then
@@ -69,6 +71,7 @@ local function init_callout(id, sec, f, args, is_repeat)
     end
 end
 
+-- 定时器循环
 local function timer_loop()
     local diff = collectgarbage("count") - last_mem
     last_mem = last_mem + diff
@@ -87,36 +90,46 @@ local function timer_loop()
         step_men = step
         collectgarbage("step", step_men)
     end
-
+    
+    -- 下一秒继续进入
     skynet.timeout(100, timer_loop)
     cur_frame = cur_frame + 1
     
+    -- 没有定时器执行
     if timer_size <= 0 then return end
 
+    -- 取出当前帧要执行的定时器回调函数
     local callouts = frame2callouts[cur_frame]
     if not callouts then return end
 
+    -- 当前帧的回调函数没有了
     if callouts.size <= 0 then
         frame2callouts[cur_frame] = nil
         frame_size = frame_size - 1
+        return
     end
 
+    -- 处理当前帧的回调函数
     for id, info in pairs(callouts.timers) do
         local f = info[1]
         local args = info[2]
         local ok, err = xpcall(f, traceback, tunpack(args, 1, args.n))
         if not ok then
+            log.debug("crontab is run is error:", f == nil, args)
             log.error("crontab is run is error:", err)
         end
-
+        --处理完了，删掉定时器
         del_timer(id)
 
+        -- 循环定时器， 则再加入到定时器当中
         local is_repeat = info[3]
         if is_repeat then
             local sec = info[4]
             init_callout(id, sec, f, args, true)
         end
     end
+
+    -- 当前帧已经处理完，删除
     if frame2callouts[cur_frame] then
         frame2callouts[cur_frame] = nil
         frame_size = frame_size-1

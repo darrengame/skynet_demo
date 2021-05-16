@@ -3,12 +3,13 @@ require "skynet.manager"
 local log = require "log"
 local mng = require "cached.mng"
 local user = require "cached.user"
+local item = require "cached.item"
 
 local CMD = {}
 
 function CMD.run(func_name, mod, sub_mod, id, ...)
     local func = mng.get_func(mod, sub_mod, func_name)
-    local cache = mng.locad_cache(mod, id)
+    local cache = mng.load_cache(mod, id)
     return func(id, cache, ...)
 end
 
@@ -26,4 +27,5 @@ skynet.start(function()
     end)
     mng.init()
     user.init()
+    item.init()
 end)

@@ -14,10 +14,18 @@ function M.get_db_conf()
     if dbuser and dbpwd then
         cfg.username = dbuser
         cfg.password = dbpwd
-        cfg.authdb = authdb
     end
+    cfg.authdb = authdb
 
     return cfg
+end
+
+function M.get_tbl(key)
+    local s = skynet.getenv(key)
+    if type(s) == "string" then
+        s = load("return " .. s)()
+    end
+    return s
 end
 
 return M

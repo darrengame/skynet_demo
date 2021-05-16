@@ -3,6 +3,7 @@ local mongo = require "skynet.db.mongo"
 local log = require "log"
 local guid = require "guid"
 local config = require "config"
+local util_table = require "util.table"
 
 local M = {}
 
@@ -29,7 +30,7 @@ local function call_create_new_user(acc, init_data)
 end
 
 local function _call_load_user(acc)
-    local ret = account_tbl.findOne({acc = acc})
+    local ret = account_tbl:findOne({acc = acc})
     if not ret then
         return call_create_new_user(acc)
     else
@@ -57,7 +58,7 @@ function M.init_db()
     -- guid 模块初始化
     cfg.dbname = skynet.getenv("guid_db_name")
     cfg.tblname = skynet.getenv("guid_tbl_name")
-    cfg.idtypes = skynet.getenv("guid_idtypes")
+    cfg.idtypes = config.get_tbl("guid_idtypes")
     guid.init(cfg)
 end
 
@@ -76,6 +77,38 @@ function M.find_and_create_user(acc)
         return 0, err
     end
     return uid, data
+end
+
+function M.find_by_name(name, limit)
+    local query = {
+        name = {
+            ["$regex"] = name,
+            ["$options"] = 'i',
+        },
+    }
+    local selector = {
+        ["_id"] = 0,
+        ["uid"] = 1,
+        ["name"] = 1,
+    }
+    local ret = account_tbl:find(query, selector):limit(limit)
+    local ret_list = {}
+    while ret:hasNext() do
+        local data = ret:next()
+        ret_list[data.uid] = data
+    end
+
+    return ret_list
+end
+
+function M.update_username(uid, name)
+    local data = {
+        ["$set"] = {name = name},
+    }
+    local _ok, ok, _, ret = xpcall(account_tbl.safe_update, debug.traceback, account_tbl, {uid = uid}, data, true, false)
+    if not _ok or not (ok and ret and ret.n == 1) then
+        log.error("update username error. uid:", uid, _ok, ok, util_table.tostring(ret))
+    end
 end
 
 return M

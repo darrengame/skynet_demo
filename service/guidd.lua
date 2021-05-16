@@ -47,7 +47,7 @@ local function init_generator(idtype, step)
         return
     end
 
-    log.error("get new id block. start:", id, ", step:", step)
+    log.info("get new id block. start:", id, ", step:", step)
     block_datas[idtype].blocks[id] = step
 end
 
@@ -125,7 +125,7 @@ local function get_new_id(idtype)
     end
 
     log.debug("consume ok. guid:", new_id)
-    return new_db_id
+    return new_id
 end
 
 local function create_new_ids()
