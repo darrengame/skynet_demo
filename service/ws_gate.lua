@@ -5,7 +5,11 @@ local socketdriver = require "skynet.socketdriver"
 local log = require "log"
 local util_table = require "util.table"
 local batch = require "batch"
+local pb = require "protobuf"
+local cjson = require "cjson"
 require "skynet.manager"
+
+pb.register_file "./etc/spaceship.pb"
 
 local WATCHDOG -- watchdog 服务的地址
 local MAXCLIENT = 1000 -- 客户端数量上限
@@ -38,7 +42,9 @@ end
 
 local function do_send_msg(fd, msg)
     if connection[fd] then
-        websocket.write(fd, msg)
+        -- log.debug("do_send_msg:", tostring(fd), ", msg:", util_table.tostring(msg))
+        local buffer = pb.encode("spaceship.S2CMessage", msg)
+        websocket.write(fd, buffer, "binary")
     end
 end
 
@@ -68,16 +74,21 @@ function handler.handshake(fd, header, url)
     log.debug("ws handshake from:", tostring(fd), ", url:", url, ", addr:", addr)
 end
 
-function handler.message(fd, msg)
-    log.debug("ws message from:", tostring(fd), ", msg:", msg)
+function handler.message(fd, msg, msg_type)
+    -- log.debug("ws message from:", tostring(fd))--, ", msg:", msg)
     -- recv a package, forwar it
     local c = connection[fd]
     local agent = c and c.agent
-    -- msg is string
-    if agent then
-        skynet.redirect(agent, c.client, "client", fd, msg)
-    else
-        skynet.send(WATCHDOG, "lua", "socket", "data", fd, msg)
+    -- msg is buff
+    local req = pb.decode("spaceship.C2SMessage", msg)
+    -- log.info("ws message from:", tostring(fd), ", req:", util_table.tostring(req), ", agent:", tostring(agent), ", msg_type:", msg_type)
+    for k, data in pairs(req) do
+        data.content = k
+        if agent then
+            skynet.redirect(agent, c.client, "client", fd, skynet.packstring(data), msg_type)
+        else
+            skynet.send(WATCHDOG, "lua", "socket", "data", fd, data)
+        end
     end
 end
 
@@ -130,8 +141,9 @@ function CMD.forward(source, fd, client, addr)
 end
 
 function CMD.response(source, fd, msg)
-    log.debug("ws response:", tostring(fd), ", msg:", msg)
-    websocket.write(fd, msg)
+    -- log.debug("ws response:", tostring(fd), ", msg:", util_table.tostring(msg))
+    -- websocket.write(fd, msg)
+    do_send_msg(fd, msg)
 end
 
 function CMD.kick(source, fd)
@@ -171,4 +183,13 @@ skynet.start(function()
 
     skynet.register(".ws_gate")
     log.info("ws_gate booted.")
+
+    -- local buffer = pb.encode("spaceship.C2SMessage", {ping = {time=skynet.time()}})
+    -- log.info("ping buffer:", buffer)
+    -- local data = pb.decode("spaceship.C2SMessage", buffer)
+    -- log.info("pong time:", buffer, util_table.tostring(data))
+
+    local encode_str = cjson.encode({q=1, c="string"})
+    local decode_str = cjson.decode(encode_str)
+    log.info("test cjson:", encode_str, decode_str)
 end)

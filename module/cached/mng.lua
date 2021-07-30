@@ -17,6 +17,7 @@ local init_cb_list = {} -- 数据加载后的初始化回调函数列表
 
 local function init_db()
     local cfg = config.get_db_conf()
+    log.info("mongo client config:", util_table.tostring(cfg))
     local dbs = mongo.client(cfg)
 
     local db_name = "data_cache_db"

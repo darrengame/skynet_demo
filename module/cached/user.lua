@@ -8,8 +8,8 @@ local CMD = {}
 
 -- 初始化回调
 local function init_cb(uid, cache)
-    if not cache.username then
-        cache.username = "New Player"
+    if not cache.name then
+        cache.name = "New Player"
     end
     if not cache.lv then
         cache.lv = 1
@@ -30,18 +30,18 @@ local function get_next_lv(lv)
 end
 
 function CMD.get_username(uid, cache)
-    return cache.username
+    return cache.name
 end
 
-function CMD.set_username(uid, cache, username)
-    cache.username = username
+function CMD.set_username(uid, cache, name)
+    cache.name = name
     return true
 end
 
 -- 获取玩家信息
 function CMD.get_userinfo(uid, cache)
     local userinfo = {
-        username = cache.username,
+        name = cache.name,
         lv = cache.lv,
         exp = cache.exp,
     }

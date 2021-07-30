@@ -2,6 +2,7 @@ local skynet = require "skynet"
 local mng = require "ws_watchdog.mng"
 local json = require "json"
 local log = require "log"
+local util_table = require "util.table"
 
 local GATE
 local AGENT
@@ -27,19 +28,19 @@ function SOCKET.warning(fd, size)
     log.warn("socket warning", fd, size, "K")
 end
 
-function SOCKET.data(fd, msg)
-    log.debug("socket data", fd, msg)
+function SOCKET.data(fd, req)
+    log.debug("socket data", fd, req)
     -- 解析客户端消息，pid为协议ID
-    local req = json.decode(msg)
-    if not req.pid then
-        log.error("Unknow proto. fd:", fd, ", msg:", msg)
+    -- local req = json.decode(msg)
+    if not req.content then
+        log.error("Unknow proto. fd:", fd, ", req:", req)
         return
     end
     -- 判断客户端是否已经认证
     if not mng.check_auth(fd) then
         -- 没有通过认证且不是登录协议则踢下线
-        if not mng.is_no_auth(req.pid) then
-            log.warn("auth failed. fd:", fd, ", msg:", msg)
+        if not mng.is_no_auth(req.content) then
+            log.warn("auth failed. fd:", fd, ", req:", req)
             mng.close_fd(fd)
             return
         end
@@ -47,7 +48,7 @@ function SOCKET.data(fd, msg)
     -- 协议处理逻辑
     local res = mng.handle_proto(req, fd)
     if res then
-        skynet.call(GATE, "lua", "response", fd, json.encode(res))
+        skynet.call(GATE, "lua", "response", fd, res)
     end
 end
 

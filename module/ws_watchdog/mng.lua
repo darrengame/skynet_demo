@@ -13,7 +13,7 @@ local noauth_fds = {}   -- 未通过认证的客户端
 
 -- 标记哪些协议不需要登录就能访问
 local no_auth_proto_list = {
-    c2s_login = true,
+    login = true,
 }
 
 local function timeout_auth(fd)
@@ -37,13 +37,12 @@ end
 --[[
     登录协议处理
     {
-    "pid": "c2s_login",
     "token": "token",
     "acc": "玩家账号",
     "sign": "校验码"
     }
  ]]
-function RPC.c2s_login(req, fd)
+function RPC.login(req, fd)
     -- token 验证
     if not check_sign(req.token, req.acc, req.sign) then
         log.debug("login failed. token:", req.token, ", acc:", req.acc, ", sing:", req.sign)
@@ -69,9 +68,9 @@ end
 -- 协议接收
 function M.handle_proto(req, fd)
     -- 根据协议 ID 找到对应的处理函数
-    local func = RPC[req.pid]
+    local func = RPC[req.content]
     if not func then
-        log.error("proto RPC ID can't find:", req.pid)
+        log.error("proto RPC ID can't find:", req.content)
         return
     end
     local res = func(req, fd)

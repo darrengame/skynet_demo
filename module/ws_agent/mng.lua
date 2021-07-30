@@ -33,8 +33,8 @@ end
 
 -- 返回协议给客户端
 function M.send_res(fd, res)
-    local msg = json.encode(res)
-    skynet.call(GATE, "lua", "response", fd, msg)
+    -- local msg = json.encode(res)
+    skynet.call(GATE, "lua", "response", fd, res)
 end
 
 function M.login(acc, fd)
@@ -61,14 +61,12 @@ function M.login(acc, fd)
 
     log.info("Login Success. acc:", acc, ", fd:", fd)
     local res = {
-        pid = "s2c_login",
         uid = uid,
-        username = userinfo.username,
+        name = userinfo.name,
         lv = userinfo.lv,
         exp = userinfo.exp,
-        msg = "Login Success",
     }
-    return res
+    return {user = res}
 end
 
 function M.disconnect(fd)
@@ -95,9 +93,9 @@ end
 -- 协议分发
 function M.handle_proto(req, fd, uid)
     -- 根据协议 ID 找到对应的处理函数
-    local func = RPC[req.pid]
+    local func = RPC[req.content]
     if not func then
-        log.error("proto RPC ID can't find:", req.pid)
+        log.error("proto RPC ID can't find:", req.content)
         return
     end
     local res = func(req, fd, uid)
@@ -182,12 +180,18 @@ function RPC.c2s_set_username(req, fd, uid)
     -- end
 end
 
-function RPC.c2s_heartbeat(req, fd, uid)
+function RPC.ping(req, fd, uid)
     local user = online_users[uid]
     if not user then
+        log.error("RPC ping error: user id:", uid)
         return
     end
     user.heartbeat = skynet.time()
+    -- log.info("RPC ping:", req.time, user.heartbeat, user.heartbeat - req.time)
+    local res = {
+        time = user.heartbeat
+    }
+    return {pong=res}
 end
 
 return M

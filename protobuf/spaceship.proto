@@ -1,0 +1,102 @@
+syntax = "proto3";
+import "base.proto";
+package spaceship;
+
+message S2CMessage {
+    oneof content {
+        Pong pong = 1;              // 心跳回包
+        User user = 7; // 登陆回调用户信息
+        ModifyName modifyName = 8; // 修改名字
+        PlayerState playerState = 6; // 玩家加入/离开状态
+
+        SyncData syncData = 2;      // 同步游戏数据
+        StartData startData = 3;    // 游戏开始
+        FrameData frameData = 4;    // 帧数据
+        OverData overData = 5;      // 游戏结算
+    }
+}
+
+message C2SMessage {
+    oneof content {
+        Ping ping = 1;          // 心跳包
+        Login login = 2;        // 登录
+        ModifyName modifyName = 4; // 修改名字
+
+        JoinGame joinGame = 5;  // 加入游戏
+        Point move = 6;         // 移动指令
+    }
+}
+
+message Point {
+    sint32 x = 1;
+    sint32 y = 2;
+}
+
+message Spaceship {
+    uint32 uid = 1;
+    Point position = 2;
+    Point move = 3;
+    Point direction = 4;
+    uint32 hp = 5;
+    uint32 energy = 6;
+}
+
+message Asteroid {
+    uint32 id = 1;
+    Point position = 2;
+    Point velocity = 3;
+    Point direction = 4;
+    uint32 maxHp = 5;
+    uint32 hp = 6;
+}
+
+message JoinGame {
+    uint32 uid = 1;
+}
+
+message PlayerDied {
+    uint32 uid = 1;
+    uint32 killedUid = 2;
+}
+
+message Configs {
+    sint32 shipSpeed = 1;
+    sint32 asteroidSpeed = 2;
+    sint32 keyFrameRate = 3;
+    uint32 maxHp = 4;
+    uint32 maxEnergy = 5;
+}
+
+message Rank {
+    User user = 1;
+    uint32 score = 2;
+}
+
+message FrameData {
+    repeated PlayerState players = 1;
+    uint32 frameId = 2;
+    repeated Spaceship spaceships = 3;
+    repeated Asteroid asteroids = 4;
+}
+
+message SyncData {
+    repeated User players = 1;
+    sint32 mode = 2;
+    uint32 timestamp = 3;
+    Configs configs = 4;
+    repeated FrameData frames = 5;
+}
+
+message StartData {
+    repeated User players = 1;
+    sint32 mode = 2;
+    uint32 time = 3;
+    uint32 timestamp = 4;
+}
+
+message OverData {
+    repeated Rank ranks = 1;
+    uint32 timestamp = 2;
+}
+
+
